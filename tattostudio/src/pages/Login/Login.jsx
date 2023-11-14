@@ -1,13 +1,41 @@
 import "./Login.css";
+
+import { useState } from "react";
 import { CustomInput } from "../../common/CustomInput/CustomInput";
-import { useEffect, useState } from "react";
+import { logUser } from "../../services/apiCalls";
+import { useNavigate } from "react-router-dom";
+import { validator } from "../../services/userful";
+
+import CustomAlert  from "../../common/Alert/CustomAlert";
+
 
 export const Login = () => {
+  //Declaramos esta constante para que nos permita dirigirnos desde esta vista a otras.
+  const navigate = useNavigate();
+
   // Declaramos las credenciales que vamos a solicitar para poder realizar el login.
   const [credenciales, setCredenciales] = useState({
     email: "",
     password: "",
   });
+
+  //Declaramos las credenciales que vamos a solicitar junto + Error.
+  const [credencialesError, setCredencialesError] = useState({
+    emailError: null,
+    passwordError: null,
+  });
+
+  //Declaramos los atributos del objeto que controla la alerta.
+  const [alert, setAlert] = useState({
+    show:false,
+    title:'',
+    message: '',
+  });
+
+  //Declaramos la función alert, para que pueda mutar su estado dependiendo del evento.
+  const alertHandler = (e) => {
+    setAlert(e);
+  }
 
   const functionHandler = (e) => {
     setCredenciales((prevState) => ({
@@ -16,30 +44,99 @@ export const Login = () => {
     }));
   };
 
-  useEffect(() => {
-    console.log(credenciales);
-  }, [credenciales]);
+  //Declaramos la constante errorCheck para que dependiendo de la celda que nos de error, nos muestre el error correspondiente a la celda en cuestión.
+  const errorCheck = (e) => {
+    let error = "";
+    error = validator(e.target.name, e.target.value);
+    setCredencialesError((prevState) => ({
+      ...prevState,
+      [e.target.name + "Error"]: error,
+    }));
+  };
+
+  //Declaramos la constante logMe para que, en caso de logearnos guarde el token y nos envíe al profile y por el contrario, nos muestre el error que nos impide hacerlo.
+  const logMe = () => {
+    console.log("errores",credencialesError);
+    if(!credencialesError.emailError && !credencialesError.passwordError){
+      logUser(credenciales)
+      .then((resultado) => {
+        console.log(resultado);
+        //Aqui guardaría el token........
+
+        //Una vez guardado el token,nos dirigimos a profile.
+        setTimeout(() => {
+          navigate("/profile");
+        }, 500);
+      })
+      .catch((error) => {
+        if (error.response.status !== 200){
+          console.log(error.response.message)
+          alertHandler({show:true, title:`Error ${error.response.status}`, message:`${error.response.data.message}`})
+        }
+      });
+    }
+    
+  };
+
+  //Declaramos esta constante, para que, en caso de pulsar sobre el botón que contiene "Crea tu cuenta", nos rediriga a registro.
+  const registerMe = () => {
+        setTimeout(() => {
+          navigate("/register");
+        }, 500);
+  };
+
 
   return (
     <div className="loginDesign">
-      <CustomInput
-        design={"inputDesign"}
-        type={"email"}
-        name={"email"}
-        placeholder={""}
-        // value={}
-        functionProp={functionHandler}
-        // onBlur={}
+      <CustomAlert
+      title={alert.title}
+      showAlert={alert.show}
+      message={alert.message}
+      onClose={()=>alertHandler({
+        show:false,
+        title:'',
+        message: ''
+      })} 
       />
-      <CustomInput
-        design={"inputDesign"}
-        type={"password"}
-        name={"password"}
-        placeholder={""}
-        // value={}
-        functionProp={functionHandler}
-        // onBlur={}
-      />
+      <div className="inputCard">
+        <div>Dirección de e-mail</div>
+        <CustomInput
+          design={"inputDesign"}
+          type={"email"}
+          name={"email"}
+          placeholder={""}
+          // value={}
+          functionProp={functionHandler}
+          functionBlur={errorCheck}
+        />
+        <div>{credencialesError.emailError}</div>
+        <div>
+          <div>Contraseña</div>
+          <div>¿Has olvidado la contraseña?</div>
+          </div>
+        <CustomInput
+          design={"inputDesign"}
+          type={"password"}
+          name={"password"}
+          placeholder={""}
+          // value={}
+          functionProp={functionHandler}
+          autocomplete="on"
+          functionBlur={errorCheck}
+        />
+        <div>{credencialesError.passwordError}</div>
+
+        <div className="buttonSubmit" onClick={logMe}>
+          Iniciar sesión
+        </div>
+
+        <div className="newAccount">
+          <div>----------¿Eres nuevo?----------</div>
+          <div className="buttonSubmit" onClick={registerMe}>
+          Crea tu cuenta
+        </div>
+        </div>
+      </div>
     </div>
   );
 };
